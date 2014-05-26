@@ -25,31 +25,31 @@ CONST PWSTR COUNTER_PATH = L"\\Memory\\Available Bytes";
 #define INTERVAL 1000
 
 int main(int argc, char *argv[]) {
-	struct sockaddr_in dest;
-	int s;
-	int slen = sizeof(dest);
-	char message[BUFLEN];
-	WSADATA wsa;
+    struct sockaddr_in dest;
+    int s;
+    int slen = sizeof(dest);
+    char message[BUFLEN];
+    WSADATA wsa;
 
     PDH_HQUERY hquery;
     PDH_HCOUNTER hcountercpu;
     PDH_STATUS status;
     PDH_FMT_COUNTERVALUE counterval;
 
-	if (WSAStartup(MAKEWORD(2,2), &wsa) != 0) {
-		fprintf(stderr, "WSAStartup %d\n", WSAGetLastError());
-		return 1;
-	}
+    if (WSAStartup(MAKEWORD(2,2), &wsa) != 0) {
+        fprintf(stderr, "WSAStartup %d\n", WSAGetLastError());
+        return 1;
+    }
 
-	dest.sin_family = AF_INET;
-	dest.sin_port = htons(PORT);
-	dest.sin_addr.s_addr = inet_addr(SERVER);
+    dest.sin_family = AF_INET;
+    dest.sin_port = htons(PORT);
+    dest.sin_addr.s_addr = inet_addr(SERVER);
 
-	if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == INVALID_SOCKET) {
-		fprintf(stderr, "socket %d\n", WSAGetLastError());
-		WSACleanup();
-		return 1;
-	}
+    if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == INVALID_SOCKET) {
+        fprintf(stderr, "socket %d\n", WSAGetLastError());
+        WSACleanup();
+        return 1;
+    }
 
     if ((status = PdhOpenQuery(NULL, 0, &hquery)) != ERROR_SUCCESS) {
         fprintf(stderr, "PdhOpenQuery %lx\n", status);    
@@ -61,17 +61,17 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-	/* According to MSDN: Many counters, such as rate counters, require two
-	data samples to calculate a formatted data value.
-	http://msdn.microsoft.com/en-us/library/windows/desktop/aa371897(v=vs.85).aspx
-	But it's not clear which counters might only require one.
-	*/
+    /* According to MSDN: Many counters, such as rate counters, require two
+    data samples to calculate a formatted data value.
+    http://msdn.microsoft.com/en-us/library/windows/desktop/aa371897(v=vs.85).aspx
+    But it's not clear which counters might only require one.
+    */
     if ((status = PdhCollectQueryData(hquery)) != ERROR_SUCCESS) {
         fprintf(stderr, "PdhCollectQueryData %lx\n", status);    
         return 1;
     }
 
-	Sleep(INTERVAL);
+    Sleep(INTERVAL);
 
     while (1) {
         if ((status = PdhCollectQueryData(hquery)) != ERROR_SUCCESS) {
@@ -84,32 +84,32 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
-		// %I64d is a MSVC thing
-		sprintf_s(message, BUFLEN, "machine.mojave.memAvailable %I64d %d", counterval.largeValue, (unsigned)time(NULL));
+        // %I64d is a MSVC thing
+        sprintf_s(message, BUFLEN, "machine.mojave.memAvailable %I64d %d", counterval.largeValue, (unsigned)time(NULL));
         printf("Sending %s\n", message);
 
-		// Send plaintext to carbon server
-		if (sendto(s, message, strlen(message), 0, (SOCKADDR*)&dest, slen) == SOCKET_ERROR) {
-			fprintf(stderr, "sendto %d\n", WSAGetLastError());
-			
-			if (closesocket(s) == SOCKET_ERROR) {
-				fprintf(stderr, "closesocket %d\n", WSAGetLastError());
-			}
+        // Send plaintext to carbon server
+        if (sendto(s, message, strlen(message), 0, (SOCKADDR*)&dest, slen) == SOCKET_ERROR) {
+            fprintf(stderr, "sendto %d\n", WSAGetLastError());
+            
+            if (closesocket(s) == SOCKET_ERROR) {
+                fprintf(stderr, "closesocket %d\n", WSAGetLastError());
+            }
 
-			WSACleanup();
-			return 1;
-		}
+            WSACleanup();
+            return 1;
+        }
 
         Sleep(INTERVAL);
     }
 
-	if (closesocket(s) == SOCKET_ERROR) {
-		fprintf(stderr, "closesocket %d\n", WSAGetLastError());
-		WSACleanup();
-		return 1;
-	}
+    if (closesocket(s) == SOCKET_ERROR) {
+        fprintf(stderr, "closesocket %d\n", WSAGetLastError());
+        WSACleanup();
+        return 1;
+    }
 
-	WSACleanup();
+    WSACleanup();
 
     return 0;
 }
